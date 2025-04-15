@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>我的Bootstrap网站</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        footer {
+            background-color: #343a40;
+            color: white;
+            padding: 20px 0;
+            margin-top: 40px;
+        }
+    </style>
+    <script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.4.2/echarts.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">基于 GEP 的公园综合体设计优化工具</a>
+        </div>
+    </nav>
+    <style>
+        /* 新增滚动容器样式 */
+        #scroll-container {
+            height: 55vh;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        /* 调整卡片容器间距 */
+        #card-container {
+            gap: 0.5rem;
+        }
+    </style>
+
+    <!-- 主内容区 -->
+    <div class="container mt-4">
+        <div class="row">
+            <main class="col-md-8">
+                <div class="row mb-3">  <!-- 添加全局标题容器 -->
+                    <div class="col-md-12">
+                        <h4 class="text-secondary fw-bold mb-0">数据记录</h4>
+                    </div>
+                </div>
+                <div id="scroll-container">
+                    <div id="card-container">
+                        <div class="input-card row g-2">  
+                            <script>
+                                const indicatorData = {
+                                    "生态物质产品": ["农林牧渔产品", "淡水资源", "生态能源", "矿产资源"],
+                                    "生态调节服务": ["土壤保持", "水源涵养", "净化水质", "洪水调蓄", "净化大气", "调节气候", "降低噪音", "生物多样性", "节能减排"],
+                                    "生态文化服务": ["生态游憩", "景观美学", "科普教育"]
+                                };
+                                function initCascadingSelect() {
+                                    const mainSelects = document.querySelectorAll('.main-category');
+                                    mainSelects.forEach(select => {
+                                        // 清空原有选项（修复重复添加问题）
+                                        select.innerHTML = '<option value="">请选择一级指标</option>';
+                                        
+                                        // 初始化一级选项
+                                        Object.keys(indicatorData).forEach(category => {
+                                            const option = document.createElement('option');
+                                            option.value = category;
+                                            option.textContent = category;
+                                            select.appendChild(option);
+                                        });
+                                        select.addEventListener('change', function() {
+                                            const subSelect = this.closest('.input-card').querySelector('.sub-category');
+                                            subSelect.innerHTML = '<option value="">请选择二级指标</option>';
+                                            if (this.value) {
+                                                indicatorData[this.value].forEach(sub => {
+                                                    const option = document.createElement('option');
+                                                    option.value = sub;
+                                                    option.textContent = sub;
+                                                    subSelect.appendChild(option);
+                                                });
+                                            }
+                                        });
+                                    });
+                                }
+                                function calculateResult(inputCard) {
+                                    // 使用更精确的选择器定位输入框
+                                    const inputs = inputCard.querySelectorAll('.col-3 input[type="number"]');
+                                    const service = parseFloat(inputs[0].value) || 0;
+                                    const functionVal = parseFloat(inputs[1].value) || 0;
+                                    const weight = parseFloat(inputs[2].value) || 0;
+                                    
+                                    const result = service * functionVal * weight;
+                                    inputs[3].value = result.toFixed(3);  
+                                }
+                                function addCard() {
+                                    const templateCard = document.querySelector('.input-card');
+                                    const newCard = templateCard.cloneNode(true);
+                                    
+                                    // 只清空新卡片的输入
+                                    newCard.querySelectorAll('input').forEach(input => {
+                                        input.value = '';
+                                        if (input.parentElement.parentElement.classList.contains('col-3') && 
+                                            input.nextElementSibling?.textContent === '计算结果') {
+                                            input.setAttribute('readonly', true);
+                                        }
+                                   });
+                                
+                                    // 仅初始化新卡片的下拉菜单
+                                    const newMainSelect = newCard.querySelector('.main-category');
+                                    const newSubSelect = newCard.querySelector('.sub-category');
+                                   
+                                    // 初始化一级选项（只对新卡片）
+                                    newMainSelect.innerHTML = '<option value="">请选择一级指标</option>';
+                                    Object.keys(indicatorData).forEach(category => {
+                                        const option = document.createElement('option');
+                                        option.value = category;
+                                        option.textContent = category;
+                                        newMainSelect.appendChild(option);
+                                    });
+                                    
+                                    // 绑定新卡片的事件（不影响已有卡片）
+                                    newMainSelect.addEventListener('change', function() {
+                                        newSubSelect.innerHTML = '<option value="">请选择二级指标</option>';
+                                        if (this.value) {
+                                            indicatorData[this.value].forEach(sub => {
+                                                const option = document.createElement('option');
+                                                option.value = sub;
+                                                option.textContent = sub;
+                                                newSubSelect.appendChild(option);
+                                            });
+                                        }
+                                    });
+                                    
+                                    // 优化事件绑定：只在数字输入框绑定
+                                    newCard.querySelectorAll('.col-3 input[type="number"]:not([readonly])').forEach(input => {
+                                        input.addEventListener('input', () => calculateResult(newCard));
+                                    });
+                                        
+                                    document.getElementById('card-container').appendChild(newCard);
+                                    // 移除会重置所有卡片的 initCascadingSelect() 调用
+                                }
+                            
+                                // 修复初始化绑定
+                                document.addEventListener('DOMContentLoaded', () => {
+                                    initCascadingSelect();
+                                    document.querySelectorAll('.input-card').forEach(card => {
+                                        card.querySelectorAll('.col-3 input[type="number"]:not([readonly])').forEach(input => {
+                                            input.addEventListener('input', () => calculateResult(card));
+                                        });
+                                    });
+                                });
+                                
+                            </script>
+                        
+                            <div class="col-md-3">  
+                                <div class="d-flex flex-column border rounded-3 p-2 shadow-sm bg-white h-100"> 
+                                    <label class="form-label fw-bold text-secondary mb-1" style="font-size: 0.9rem;">一级指标</label>
+                                    <select class="form-select border-primary mt-auto py-1 main-category" style="font-size: 0.9rem;">
+                                        <option value="">请选择一级指标</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="d-flex flex-column border rounded-3 p-2 shadow-sm bg-white h-100">
+                                    <label class="form-label fw-bold text-secondary mb-1" style="font-size: 0.9rem;">二级指标</label>
+                                    <select class="form-select border-success mt-auto py-1 sub-category" style="font-size: 0.9rem;">
+                                        <option value="">请选择二级指标</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">  <!-- 调整输入区宽度 -->
+                                <div class="row g-1 h-100">  <!-- 进一步减小间隙 -->
+
+                                    <div class="col-3">
+                                        <div class="d-flex flex-column border rounded-3 p-2 shadow-sm bg-white h-100">
+                                            <label class="form-label fw-bold text-secondary mb-1" style="font-size: 0.9rem;">服务量</label>
+                                            <input type="number" step="0.1" class="form-control border-info py-1" 
+                                                style="font-size: 0.9rem;" placeholder="0.0">
+                                        </div>
+
+                                    </div>
+                                    <div class="col-3">
+                                        <div class="d-flex flex-column border rounded-3 p-2 shadow-sm bg-white h-100">
+                                            <label class="form-label fw-bold text-secondary mb-1" style="font-size: 0.9rem;">功能量</label>
+                                            <input type="number" step="0.1" class="form-control border-info py-1" 
+                                                style="font-size: 0.9rem;" placeholder="0.0">
+                                        </div>
+
+                                    </div>
+                                    <div class="col-3">
+                                        <div class="d-flex flex-column border rounded-3 p-2 shadow-sm bg-white h-100">
+                                            <label class="form-label fw-bold text-secondary mb-1" style="font-size: 0.9rem;">权重</label>
+                                            <input type="number" step="0.1" class="form-control border-info py-1" 
+                                                style="font-size: 0.9rem;" placeholder="0.0">
+                                        </div>
+                                    </div>
+
+                                    <div class="col-3">
+                                        <div class="d-flex flex-column border rounded-3 p-2 shadow-sm bg-white h-100">
+                                            <label class="form-label fw-bold text-secondary mb-1" style="font-size: 0.9rem;">计算结果</label>
+                                            <input type="number" step="0.1" class="form-control border-info py-1" 
+                                                style="font-size: 0.9rem;" placeholder="0.0" readonly>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <script>
+                    // 新增计算方法
+                    function calculateGEP() {
+                        let total = 0;
+                        document.querySelectorAll('.input-card').forEach(card => {
+                            const resultInput = card.querySelector('.col-3:last-child input');
+                            total += parseFloat(resultInput.value) || 0;
+                        });
+                        const oldModal = document.getElementById('resultModal');
+                        if (oldModal) oldModal.remove();
+                        
+                        // 创建新模态框
+                        const resultHTML = `
+                            <div class="modal fade" id="resultModal" tabindex="-1">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header bg-primary text-white">
+                                            <h5 class="modal-title">GEP 总值计算结果</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <h4 class="text-center">总价值：${total.toFixed(3)}</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        
+                        document.body.insertAdjacentHTML('beforeend', resultHTML);
+                        
+                        // 确保每次都是新实例
+                        const modal = new bootstrap.Modal(document.getElementById('resultModal'), {
+                            keyboard: false
+                        });
+                        modal.show();
+                        
+                        // 添加关闭后自动清理
+                        document.getElementById('resultModal').addEventListener('hidden.bs.modal', () => {
+                            modal.dispose();
+                            document.getElementById('resultModal').remove();
+                        });
+                    }
+                </script>
+                <style>
+                    .input-card {
+                        margin-bottom: 0.2rem !important;  /* 减小卡片间距 */
+                    }
+                    .form-control, 
+                    .form-select {
+                        min-height: 28px;  /* 统一控制输入框高度 */
+                        padding: 0.25rem 0.5rem;
+                    }
+                    .input-group {
+                        min-width: auto;  /* 移除固定最小宽度 */
+                        transition: all 0.2s ease;
+                    }
+                        /* 新增统一输入框样式 */
+                    .form-select,
+                    .form-control {
+                        border-color: #c3c8d0 !important; 
+                    }
+
+                    .input-card .border-primary,
+                    .input-card .border-success,
+                    .input-card .border-warning,
+                    .input-card .border-info {
+                        border-color: #4fcff6 !important;
+                    }
+                </style>
+                <style>
+                    .add-btn {
+                        display: block;
+                        width: 100%;
+                        padding: 0.5rem 1rem; /* 减小垂直内边距 */
+                        margin: 1rem 0;
+                        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+                        color: white;
+                        border: none;
+                        border-radius: 8px;
+                        font-size: 0.9rem; /* 再次减小字体大小 */
+                        line-height: 1.2; /* 控制文字行高 */
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                        position: relative;
+                        overflow: hidden;
+                    }
+                    .add-btn2 {
+                        display: block;
+                        width: 100%;
+                        padding: 0.5rem 1rem; /* 减小垂直内边距 */
+                        margin: 1rem 0;
+                        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+                        color: white;
+                        border: none;
+                        border-radius: 8px;
+                        font-size: 0.9rem; /* 再次减小字体大小 */
+                        line-height: 1.2; /* 控制文字行高 */
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                        position: relative;
+                        overflow: hidden;
+                    }
+                
+                    /* 优化卡片间距 */
+                    .input-card:not(:last-child) {
+                        margin-bottom: 2rem;
+                    }
+                    .add-btn, .add-btn2 {
+                        margin: 0.1rem 0.1rem !important;  /* 从 1rem 改为 0.5rem */
+                    }
+                </style>
+                
+            
+                <!-- 在按钮行下方添加结果展示区 -->
+                <div class="row"> 
+                    <div class="col-md-6">
+                        <button class="add-btn" onclick="addCard()">+ 新增卡片</button>
+                    </div>
+                    <div class="col-md-6">
+                        <button class="add-btn2" onclick="calculateGEP()">开始计算</button>
+                    </div>
+                </div>
+                
+                <!-- 新增结果展示区 -->
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <div id="result-container" class="border rounded-3 p-3 bg-white shadow-sm">
+                            <h6 class="text-center mb-3">计算结果历史记录</h6>
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle">
+                                    <thead>
+                                        <tr class="table-primary">
+                                            <th>时间</th>
+                                            <th>二级指标</th>
+                                            <th>权重</th>
+                                            <th>计算结果</th>
+                                            <th>总结果</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="result-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <script>
+                    // 修改后的计算方法（保留原有按钮功能）
+                    function calculateGEP() {
+                        const results = [];
+                        let total = 0;
+                        const now = new Date().toLocaleString();
+                        
+                        document.querySelectorAll('.input-card').forEach(card => {
+                            const subCategory = card.querySelector('.sub-category').value;
+                            const weight = parseFloat(card.querySelector('.col-3:nth-child(3) input').value) || 0;
+                            const value = parseFloat(card.querySelector('.col-3:last-child input').value) || 0;
+                            
+                            if (subCategory) {
+                                results.push({ subCategory, weight, value });
+                                total += value;
+                            }
+                        });
+                        
+                        // 生成新的结果行
+                        const newRow = document.createElement('tr');
+                        newRow.innerHTML = `
+                            <td>${now}</td>
+                            <td>${results.map(r => r.subCategory).join('<br>')}</td>
+                            <td>${results.map(r => r.weight.toFixed(3)).join('<br>')}</td>
+                            <td>${results.map(r => r.value.toFixed(3)).join('<br>')}</td>
+                            <td class="text-success fw-bold">${total.toFixed(3)}</td>
+                        `;
+                        
+                        document.getElementById('result-body').prepend(newRow);
+                        updatePieChart(results);
+                    }
+                    function updatePieChart(results) {
+                        const chartDom = document.getElementById('pie-chart');
+                        const myChart = echarts.init(chartDom);
+                        
+                        const option = {
+                            title: {
+                                text: '指标分布',
+                                left: 'center'
+                            },
+                            tooltip: {
+                                trigger: 'item',
+                                formatter: '{a} <br/>{b}: {c} ({d}%)'
+                            },
+                            series: [{
+                                name: '计算结果',
+                                type: 'pie',
+                                radius: ['40%', '70%'],  // 调整内外半径
+                                avoidLabelOverlap: true,  // 新增防重叠
+                                label: {
+                                    show: true,
+                                    position: 'outside',
+                                    formatter: '{b}\n{d}%',
+                                    fontSize: 12,
+                                    padding: [5, -30],  // 调整标签位置
+                                    alignTo: 'labelLine',
+                                    bleedMargin: 5
+                                },
+                                labelLine: {
+                                    show: true,
+                                    length: 10,
+                                    length2: 30  // 延长引导线
+                                },
+                                data: results.map(item => ({
+                                    name: item.subCategory,
+                                    value: item.value
+                                })),
+                                emphasis: {
+                                    itemStyle: {
+                                        shadowBlur: 10,
+                                        shadowOffsetX: 0,
+                                        shadowColor: 'rgba(0, 0, 0, 0.5)'
+                                    }
+                                }
+                            }]
+                        };
+                    
+                        myChart.setOption(option);
+                    }
+                </script>
+            </main>
+            <aside class="col-md-4">
+                <div class="d-flex flex-column gap-1 h-100">  <!-- 从 gap-2 改为 gap-1 -->
+                    <!-- 图片展示区 -->
+                    <div class="border rounded-3 p-2 bg-white shadow-sm">
+                        <h6 class="text-center text-secondary mb-3">区位分析：武汉市解放公园</h6>
+                        <div class="d-flex justify-content-center align-items-center" style="height: 25vh">
+                            <img src="image1.jpg" alt="分析图示" class="img-fluid rounded-2" style="max-height: 38vh">
+                        </div>
+                    </div>
+                    
+                    <!-- 扇形图容器 -->
+                    <div id="chart-container" class="border rounded-3 p-2 bg-white shadow-sm" style="height: 32vh">
+                        <div id="pie-chart" style="height: calc(100% )"></div>
+                    </div>
+                    <div class="border rounded-3 p-3 bg-white shadow-lg" style="
+                        background: linear-gradient(145deg, #f8f9fa 0%, #c1f1d1 100%);
+                        min-height: 22vh;
+                        position: relative;">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="bi bi-tree-fill me-2 text-success" style="font-size: 1.2rem;"></i>
+                            <h6 class="text-secondary mb-0" style="
+                                font-size: 1.1rem;
+                                letter-spacing: 1px;
+                                text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+                                position: relative;
+                                padding-left: 0rem;">
+                                分析结果
+                                <div class="position-absolute bottom-1 start-0 bg-success" 
+                                    style="width: 80px; height: 2px;"></div>
+                            </h6>
+                        </div>
+                        <div class="d-flex justify-content-center align-items-start" 
+                            style="min-height: 18vh; padding: 0 1rem;">
+                            <p class="text-muted mb-0" style="
+                                font-size: 0.95rem;
+                                line-height: 1.8;
+                                text-align: justify;
+                                border-left: 3px solid #2a9d8f;
+                                padding-left: 1.5rem;
+                                hyphens: auto;">
+                                解放公园拥有多样的生态系统与丰富的动植物资源；注重生态环境的保护和改善，历史上已多次推行水体整治、环境美化等相关措施，不断提升公园的环境质量，提高了生态系统的稳定性和抗逆性；作为城市绿肺和市民休闲的重要场所，提供了多种生态服务功能。除去园内自然植被与水体调节微气候、净化空气、提供生物栖息地等，公园内的文化设施还提供了文化服务价值。</p>
+                        </div>
+                    </div>
+
+
+
+                </div>
+            </aside>
+        </div>
+    </div>
+    <!-- 页脚 -->
+    <footer class="text-center">
+        <div class="container">
+            <p>&copy; 2024 我的网站. 保留所有权利。</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS 及其依赖 -->
+    <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    
+</body>
+</html>
+
+
+
+
+
+
+
+
